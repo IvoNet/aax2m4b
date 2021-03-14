@@ -21,6 +21,7 @@ ICON_APP = f"{RESOURCE}/yoda.png"
 APP_RCRACK = f'{RESOURCE}/rcrack'
 APP_MP3_BINDER = f'{RESOURCE}/mp3binder'
 APP_FFMPEG = f'{RESOURCE}/ffmpeg'
+APP_FFPROBE = f'{RESOURCE}/ffprobe'
 APP_ATOMIC_PARSLEY = f"{RESOURCE}/AtomicParsley"
 APP_MP4_CHAPS = f'{RESOURCE}/mp4chaps'
 APP_MP4_ART = f"{RESOURCE}/mp4art"

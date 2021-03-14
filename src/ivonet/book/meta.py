@@ -58,7 +58,7 @@ GENRES = [
 ]
 
 CHAPTER_LIST = [
-    "Based on mp3 length",
+    "Based existing chapters",
     "Fixed 3 minutes",
     "Fixed 10 minutes",
     "Fixed 15 minutes",

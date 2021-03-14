@@ -18,7 +18,7 @@ python ./version.py
 
 echo "Building..."
 
-echo "Building the m4baker.app"
-python -OO -m PyInstaller --osx-bundle-identifier nl.ivonet.m4baker --noconsole -y m4baker.spec
+echo "Building the app"
+python -OO -m PyInstaller --osx-bundle-identifier nl.ivonet.aax2m4b --noconsole -y aax2m4b.spec
 
 ./tag.sh

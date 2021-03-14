@@ -320,7 +320,7 @@ class ProjectConverterWorker(object):
         if not self.keep_going:
             self.running = False
             return
-        self.process = subprocess.Popen(
+        process = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -330,6 +330,7 @@ class ProjectConverterWorker(object):
         )
         # Close stdin as it is not used
         self.process.stdin.close()
+        return process
 
     def __check_process(self, cmd):
         if self.process and not self.keep_going:

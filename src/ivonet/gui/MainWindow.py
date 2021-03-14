@@ -16,7 +16,6 @@ from io import BytesIO
 
 import wx
 import wx.adv
-from tinytag import TinyTag
 from wx.lib.wordwrap import wordwrap
 
 import ivonet
@@ -217,11 +216,10 @@ class MainFrame(wx.Frame):
         cover_art_sizer_h.Add(self.cover_art, 1, wx.EXPAND, 0)
 
         # MP3 Drag n Drop section
-        self.lc_mp3 = wx.adv.EditableListBox(self, wx.ID_ANY, "Drag and Drop mp3 files below...",
+        self.lc_mp3 = wx.adv.EditableListBox(self, wx.ID_ANY, "Drag and Drop aax files below...",
                                              style=wx.adv.EL_ALLOW_DELETE)
-        self.lc_mp3.SetToolTip("Drag and Drop MP3 files here")
         self.lc_mp3.SetDropTarget(MP3DropTarget(self))
-        self.lc_mp3.SetToolTip("Drag and Drop MP3 files here")
+        self.lc_mp3.SetToolTip("Drag and Drop AAX files here")
         self.lc_mp3.del_button = self.lc_mp3.GetDelButton()
         self.lc_mp3.GetListCtrl().Bind(wx.EVT_LEFT_DCLICK, self.on_tracks_empty)
         self.lc_mp3.GetListCtrl().Bind(wx.EVT_LIST_ITEM_RIGHT_CLICK, self.on_selected_right_click)

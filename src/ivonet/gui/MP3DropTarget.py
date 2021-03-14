@@ -47,7 +47,7 @@ class MP3DropTarget(wx.FileDropTarget):
                 log("Recognized project file. Opening...")
                 self.target.project_open(name)
                 return True
-            if name.lower().endswith(".mp3") and name not in self.target.lc_mp3.GetStrings():
+            if name.lower().endswith(".aax") and name not in self.target.lc_mp3.GetStrings():
                 self.target.append_track(name)
                 tag = TinyTag.get(name, image=True, ignore_errors=True)
                 if tag.get_image():

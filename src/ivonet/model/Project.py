@@ -10,6 +10,8 @@ The idea is that this project can be Pickled to a file and restored again to get
 Audiobook configuration.
 """
 
+from tinytag import TinyTag
+
 
 class Project(object):
     def __init__(self) -> None:
@@ -20,7 +22,7 @@ class Project(object):
         self.grouping = ""
         self.genre = "Urban Fantasy"
         self.chapter_text = "Chapter"
-        self.chapter_method = "Based on mp3 length"
+        self.chapter_method = "Based existing chapters"
         self.comment = ""
         self.disc = 1
         self.disc_total = 1
@@ -61,7 +63,6 @@ class Project(object):
         return self.comment.replace('"', "").replace("'", "").replace("  ", " ").replace("\t", " ")
 
     def __repr__(self) -> str:
-        # TODO remove Attribute Error code as it is plumbing code to allow unpickle of objects not having m4b_name
         return f"""Project [
     project_name={self.name},
     m4b_name={self.m4b_name},

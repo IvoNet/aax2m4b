@@ -3,3 +3,16 @@
 node_modules
 .DS_Store
 target
+rcrack
+ffprobe
+ffmpeg
+AtomicParsley
+mp3binder
+mp4art
+mp4chaps
+audible_byte*.rt
+*.aax
+generated
+venv
+build
+dist
