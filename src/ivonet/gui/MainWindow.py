@@ -69,12 +69,12 @@ class MainFrame(wx.Frame):
         vs_main = wx.BoxSizer(wx.VERTICAL)
 
         self.main_panel = wx.Panel(self, wx.ID_ANY)
-        vs_main.Add(self.main_panel, 3, wx.EXPAND, 0)
+        vs_main.Add(self.main_panel, 1, wx.EXPAND, 0)
 
         vs_main_panel = wx.BoxSizer(wx.VERTICAL)
 
         hs_main_panel = wx.BoxSizer(wx.HORIZONTAL)
-        vs_main_panel.Add(hs_main_panel, 4, wx.EXPAND, 0)
+        vs_main_panel.Add(hs_main_panel, 1, wx.EXPAND, 0)
 
         self.m4b_panel = wx.Panel(self.main_panel, wx.ID_ANY)
         hs_main_panel.Add(self.m4b_panel, 1, wx.EXPAND, 0)
@@ -91,7 +91,7 @@ class MainFrame(wx.Frame):
         self.lc_audiofiles.del_button = self.lc_audiofiles.GetDelButton()
         self.lc_audiofiles.GetListCtrl().Bind(wx.EVT_LEFT_DCLICK, self.on_tracks_empty)
 
-        hs_m4b_panel.Add(self.lc_audiofiles, 5, wx.ALL | wx.EXPAND, 0)
+        hs_m4b_panel.Add(self.lc_audiofiles, 3, wx.ALL | wx.EXPAND, 0)
 
         self.log_panel = wx.Panel(self.main_panel, wx.ID_ANY)
         vs_main_panel.Add(self.log_panel, 1, wx.EXPAND, 0)
