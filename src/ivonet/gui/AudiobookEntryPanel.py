@@ -8,6 +8,7 @@ __doc__ = """
 
 """
 
+import os
 import time
 
 import wx
@@ -17,13 +18,11 @@ from wx._core import CommandEvent
 from ivonet.events import log, dbg
 from ivonet.events.custom import EVT_PROCESS_DONE, EVT_PROCESS_ERROR, ProcessExceptionEvent, ProcessCleanEvent, \
     ProcessCancelledEvent
-from ivonet.io.save import save_project
-from ivonet.model.Project import Project
 from ivonet.threading.ProjectConverterWorker import ProjectConverterWorker
 
 
 class AudiobookEntry(wx.Panel):
-    def __init__(self, parent, project: Project, panel_id=wx.ID_ANY):
+    def __init__(self, parent, project: str, panel_id=wx.ID_ANY):
         wx.Panel.__init__(self, parent.queue_window, panel_id, style=wx.BORDER_SIMPLE)
         self.parent = parent
         self.start_time = time.perf_counter()
@@ -31,12 +30,13 @@ class AudiobookEntry(wx.Panel):
         self.project = project
         self.running = False
 
+        base_dir, filename = os.path.split(self.project)
+        audiobook_name = filename.lower().replace(".aax", ".m4b")
+
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add((10, 10), 0, 0, 0)
 
-        self.filename = wx.StaticText(self, wx.ID_ANY,
-                                      project.title)  #
-        self.filename.SetToolTip(str(project))
+        self.filename = wx.StaticText(self, wx.ID_ANY, audiobook_name)
         sizer.Add(self.filename, 5, wx.ALIGN_CENTER_VERTICAL, 0)
 
         self.elapsed = wx.StaticText(self, wx.ID_ANY, "00:00:00")
@@ -45,7 +45,7 @@ class AudiobookEntry(wx.Panel):
         self.refresh_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_time_indicator, self.refresh_timer)
 
-        self.progress = wx.Gauge(self, wx.ID_ANY, range=600, size=(300, 21), style=wx.GA_HORIZONTAL | wx.GA_SMOOTH)
+        self.progress = wx.Gauge(self, wx.ID_ANY, range=900, size=(300, 21), style=wx.GA_HORIZONTAL | wx.GA_SMOOTH)
         sizer.Add(self.progress, 3, wx.ALIGN_CENTER_VERTICAL, 0)
 
         self.stop_button = wx.Button(self, wx.ID_ANY, "x")
@@ -58,7 +58,6 @@ class AudiobookEntry(wx.Panel):
         sizer.Add((10, 10), 0, 0, 0)
         self.SetSizer(sizer)
 
-        self.Bind(wx.EVT_LEFT_DCLICK, self.on_save, self)
         self.Layout()
         self.process = ProjectConverterWorker(self, self.project)
 
@@ -88,20 +87,16 @@ class AudiobookEntry(wx.Panel):
     def on_done(self, event):
         self.stop()
         self.filename.SetForegroundColour(wx.GREEN)
+        self.parent.remove_from_active_queue(self)
         event.Skip()
 
     def on_error(self, event: ProcessExceptionEvent):
-        log("Processing stopped because an error occurred:", event.project.title)
-        dbg("Processing error", str(event.cmd))
+        log("Processing stopped because an error occurred in:", event)
+        dbg("Processing error:", str(event.msg))
         self.filename.SetForegroundColour(wx.RED)
         self.Refresh()
         self.stop()
 
     def on_time_indicator(self, event):
         self.elapsed.SetLabel(time.strftime("%H:%M:%S", time.gmtime(time.perf_counter() - self.start_time)))
-        event.Skip()
-
-    def on_save(self, event):
-        dbg("on_save event!")
-        save_project(self.parent, self.project)
         event.Skip()

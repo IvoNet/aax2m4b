@@ -38,6 +38,8 @@ if not os.path.isfile(APP_MP4_CHAPS):
 if not os.path.isfile(APP_MP4_ART):
     raise IOError("mp4art not found. Are you sure you copied it to the resource folder? See the README.md")
 
+RAINBOW_FILES = [os.path.join(RESOURCE, x) for x in os.listdir(RESOURCE) if x.lower().endswith(".rt")]
+
 SETTINGS_DIRECTORY = data_directory(TXT_APP_NAME)
 if not os.path.isdir(SETTINGS_DIRECTORY):
     os.mkdir(SETTINGS_DIRECTORY)

@@ -11,20 +11,15 @@ __doc__ = """
 import _thread
 import os
 import re
-import shutil
 import subprocess
-import tempfile
-from io import BytesIO
 
 import wx
 import wx.lib.newevent
 
 import ivonet
-from ivonet.book.meta import CHAPTER_LIST
 from ivonet.events import dbg, log
 from ivonet.events.custom import ProcessDoneEvent, ProcessExceptionEvent
-from ivonet.io import unique_name
-from ivonet.model.Project import Project
+from ivonet.io import ffprobe
 
 
 def time_seconds(seq) -> int:
@@ -40,9 +35,14 @@ class ProjectConverterWorker(object):
     DURATION = re.compile(".*Duration: ([0-9]{2}):([0-9]{2}):([0-9]{2}).([0-9]{2}).*")
     TIME_ELAPSED = re.compile(".*size=.*time=([0-9]{2}):([0-9]{2}):([0-9]{2}).([0-9]{2}).*")
 
-    def __init__(self, parent, project: Project) -> None:
+    def __init__(self, parent, project) -> None:
         self.parent = parent
         self.project = project
+        self.base_dir, self.filename = os.path.split(self.project)
+        self.audiobook_name = os.path.splitext(self.filename)[0]
+        self.m4a = os.path.join(self.base_dir, self.audiobook_name + ".m4a")
+        self.m4b = os.path.join(self.base_dir, self.audiobook_name + ".m4b")
+        self.cover = os.path.join(self.base_dir, self.audiobook_name + ".jpg")
         self.keep_going = False
         self.running = False
         self.pid = None
@@ -65,123 +65,122 @@ class ProjectConverterWorker(object):
 
     def run(self):
         self.running = True
+        log(f"Creating: {self.m4b}")
 
-        with tempfile.TemporaryDirectory() as project_tmpdir:
-            dbg("Temp dir:", project_tmpdir)
-            log(f"Creating: {self.project.m4b_name}")
-
-            # bind all mp3 into one file (mp3binder)
-            self.parent.stage = 0
-            merged = os.path.join(project_tmpdir, "merged.mp3")
-            self.merge_mp3_files(merged)
-
-            self.process = None
-            if not self.keep_going:
-                self.running = False
-                return
-
-            # Convert ffmpeg
-            self.parent.stage = 1
-            m4a = os.path.join(project_tmpdir, "converted.m4a")
-            self.convert_2_m4a(merged, m4a)
-
-            self.process = None
-            if not self.keep_going:
-                self.running = False
-                return
-
-            # Add metadata tags
-            self.parent.stage = 2
-            self.add_metadata(m4a)
-
-            self.process = None
-            if not self.keep_going:
-                self.running = False
-                return
-
-            # Add chapters
-            self.parent.stage = 3
-            m4b = os.path.join(project_tmpdir, "converted.m4b")
-            self.create_chapters(project_tmpdir, m4b)
-
-            self.process = None
-            if not self.keep_going:
-                self.running = False
-                return
-
-            # Add CoverArt
-            self.parent.stage = 4
-            cover = os.path.join(project_tmpdir, "cover.png")
-            self.add_cover_art(cover, m4b)
-
-            self.process = None
-            if not self.keep_going:
-                self.running = False
-                return
-
-            self.parent.stage = 5
-            self.parent.update(25)
-            log(f"Moving completed audiobook [{self.project.title}] to final destination.")
-            shutil.move(m4b, unique_name(self.project.m4b_name))
-            self.parent.update(100)
-
-            if self.keep_going:
-                self.parent.update(100)
-                wx.PostEvent(self.parent, ProcessDoneEvent())
-            self.running = False
-            self.keep_going = False
-            log(f"Created: {self.project.m4b_name}")
-
-    def merge_mp3_files(self, merged):
-
-        if len(self.project.tracks) == 1:
-            self.parent.update(25)
-            shutil.copyfile(self.project.tracks[0], merged)
-            self.parent.update(100)
+        self.parent.stage = 1
+        checksum = ffprobe.checksum(self.project)
+        log(f"Checksum for [{self.project}] is [{checksum}]")
+        if not checksum:
+            wx.PostEvent(self.parent, ProcessExceptionEvent(msg="No checksum retrieved.", project=self.project))
             return
 
-        cmd = [ivonet.APP_MP3_BINDER, '-out', merged]
-        [cmd.append(mp3) for mp3 in self.project.tracks]
+        self.parent.stage = 2
+        activation_bytes = self.get_activation_bytes(checksum)
+        log(f"Activation bytes for [{self.project}] are [{activation_bytes}]")
+        if not activation_bytes:
+            wx.PostEvent(self.parent, ProcessExceptionEvent(msg="No activation bites found.", project=self.project))
+            return
+
+        if not self.keep_going:
+            self.running = False
+            return
+
+        self.parent.stage = 3
+        metadata = ffprobe.metadata(self.project)
+
+        if not self.keep_going:
+            self.running = False
+            return
+
+        self.parent.stage = 4
+        self.convert_2_m4a(activation_bytes)
+
+        if not self.keep_going:
+            self.running = False
+            return
+
+        self.parent.stage = 5
+        self.add_metadata(metadata)
+
+        if not self.keep_going:
+            self.running = False
+            return
+
+        self.parent.stage = 7
+        self.extract_cover()
+
+        if not self.keep_going:
+            self.running = False
+            return
+
+        self.parent.stage = 8
+        self.add_cover_art()
+
+        self.cleanup()
+
+        if self.keep_going:
+            self.parent.update(100)
+            wx.PostEvent(self.parent, ProcessDoneEvent())
+        self.running = False
+        self.keep_going = False
+        log(f"Created: {self.m4b}")
+
+    def get_activation_bytes(self, checksum):
+        ret = None
+        for idx, rt_file in enumerate(ivonet.RAINBOW_FILES, 1):
+            self.parent.update(idx * (100 / len(ivonet.RAINBOW_FILES)))
+            ret = self.activation_bytes(rt_file, checksum)
+            if ret:
+                self.parent.update(100)
+                return ret
+        if not ret:
+            self.keep_going = False
+        return ret
+
+    def activation_bytes(self, rt_file, checksum):
+        cmd = [ivonet.APP_RCRACK, rt_file, "-h", checksum]
+        dbg(cmd)
 
         self.subprocess(cmd)
 
-        log(f"Merging mp3 files for: {self.project.title}")
-        total = len(self.project.tracks)
-        count = 0
+        log(f"RainbowCrack: {self.project}")
+        ret = None
         while self.keep_going:
             try:
                 line = self.process.stdout.readline()
             except UnicodeDecodeError:
-                #  just skip a line
                 continue
             dbg(line)
             if not line:
-                dbg(f"Finished Merge for: {self.project.title}")
+                dbg(f"Finished Merge for: {self.project}")
                 break
-            if "Processing:" in line:
-                count += 1
-                self.parent.update(int((count * 100) / total))
+            if "hex:" in line:
+                ret = line.split("hex:")[1]
+                if not ret or "notfound" in ret:
+                    ret = None
         self.__check_process(cmd)
+        self.parent.update(100)
+        return ret.strip()
 
-    def convert_2_m4a(self, merged, m4a):
+    def convert_2_m4a(self, activation_bytes):
         cmd = [ivonet.APP_FFMPEG,
+               "-activation_bytes", activation_bytes,
                '-i',
-               merged,
+               self.project,
                "-stats",
-               "-threads", "4",
-               "-vn",
                "-y",
+               "-vn",
+               "-c:a", "copy",
                "-acodec", "aac",
-               "-strict",
-               "-2",
+               "-movflags", "use_metadata_tags",
                "-map_metadata", "0",
                "-map_metadata:s:a", "0:s:a",
-               "-ac", "1",
-               m4a,
+               self.m4a,
                ]
+        dbg(cmd)
         self.subprocess(cmd)
 
-        log(f"Conversion has started for: {self.project.title}")
+        log(f"Conversion has started for: {self.project}")
         while self.keep_going:
             try:
                 line = self.process.stdout.readline()
@@ -189,7 +188,7 @@ class ProjectConverterWorker(object):
                 #  just skip a line
                 continue
             if not line:
-                dbg(f"Conversion finished for: {self.project.title}")
+                dbg(f"Conversion finished for: {self.project}")
                 break
             dbg(line)
             duration = self.DURATION.match(line)
@@ -202,32 +201,30 @@ class ProjectConverterWorker(object):
                 self.parent.update(self.progress)
         self.__check_process(cmd)
 
-    def add_metadata(self, m4a):
+    def add_metadata(self, metadata):
         """AtomicParsley "${AUDIOBOOK}.m4a" --title "${TITLE}"
         --grouping "${GROUPING}" --sortOrder album "${GROUPING}"
         --album "${ALBUM}" --artist "${AUTHOR}" --genre "${GENRE}"
         --tracknum "${TRACK}" --disk "${TRACK}" --comment "${COMMENT}"
         --year "${YEAR}" --stik Audiobook --overWrite"""
+        tags = metadata["format"]["tags"]
         cmd = [
             ivonet.APP_ATOMIC_PARSLEY,
-            m4a,
-            "--title", f"{self.project.title}",
-            "--grouping", f"{self.project.grouping}",
-            "--sortOrder", 'album', f"{self.project.grouping}",
-            "--album", f"{self.project.title}",
-            "--artist", f"{self.project.artist}",
-            "--genre", f"{self.project.genre}",
-            "--tracknum", f"{self.project.disc}/{self.project.disc_total}",
-            "--disk", f"{self.project.disc}/{self.project.disc_total}",
-            "--comment", f"""{self.project.get_comment()}""",
-            "--year", f"{self.project.year}",
+            self.m4a,
+            "--title", f"{tags['title']}",
+            "--album", f"{tags['album']}",
+            "--artist", f"{tags['artist']}",
+            "--genre", f"{tags['genre']}",
+            "--comment", f"""{tags['comment']}""",
+            "--year", f"{tags['date']}",
             "--encodingTool", f"{ivonet.TXT_APP_NAME} ({ivonet.TXT_APP_TINY_URL})",
             "--stik", "Audiobook",
             "--overWrite"
         ]
+        dbg(cmd)
         self.subprocess(cmd)
 
-        log(f"Adding metadata to: {self.project.title}")
+        log(f"Adding metadata to: {self.project}")
         while self.keep_going:
             try:
                 line = self.process.stdout.readline()
@@ -235,7 +232,7 @@ class ProjectConverterWorker(object):
                 #  just skip a line
                 continue
             if not line:
-                dbg(f"Finished Adding metadata to {self.project.title}")
+                dbg(f"Finished Adding metadata to {self.project}")
                 break
             dbg(line)
             if "Progress:" in line:
@@ -251,51 +248,19 @@ class ProjectConverterWorker(object):
         self.parent.update(100)
         self.__check_process(cmd)
 
-    def create_chapters(self, project_tmpdir, m4b):
-        cmd = [ivonet.APP_MP4_CHAPS, ]
-        if self.project.chapter_method == CHAPTER_LIST[0]:
-            chapter_file = os.path.join(project_tmpdir, "converted.chapters.txt")
-            with open(chapter_file, "w") as fo:
-                fo.write(self.project.chapter_file())
-                self.parent.update(10)
-            cmd.append("-i")
-        else:
-            fixed = int(self.project.chapter_method.split()[1].strip()) * 60
-            cmd.append("-e")
-            cmd.append(str(fixed))
-        cmd.append(m4b)
+    def extract_cover(self):
+        dbg("Extracting cover...")
+        ret = subprocess.getstatusoutput(f'ffmpeg -i "{self.project}" -y -v quiet -an -vcodec copy "{self.cover}"')
+        if ret[0] != 0:
+            self.keep_going = False
 
-        self.subprocess(cmd)
-
-        log(f"Adding chapter information to: {self.project.title}")
-        while self.keep_going:
-            try:
-                line = self.process.stdout.readline()
-            except UnicodeDecodeError:
-                #  just skip a line should not effect the progress
-                continue
-            if not line:
-                dbg(f"Chapter information done: {self.project.title}")
-                break
-            dbg(line)
-            if "QuickTime" in line:
-                self.parent.update(50)
-        self.__check_process(cmd)
-        self.parent.update(100)
-
-    def add_cover_art(self, cover, m4b):
-        """add_cover_art(cover_name, audiobook_file) -> audiobook file with cover art
-
-        Saved the CoverArt from the project to disc and adds it to the audiobook.
-        """
-        img = wx.Image(BytesIO(self.project.cover_art), wx.BITMAP_TYPE_ANY)
-        img.SaveFile(cover, wx.BITMAP_TYPE_PNG)
+    def add_cover_art(self):
         self.parent.update(10)
-        cmd = [ivonet.APP_MP4_ART, "--add", cover, m4b]
+        cmd = [ivonet.APP_MP4_ART, "--add", self.cover, self.m4b]
 
         self.subprocess(cmd)
 
-        log(f"Adding Cover Art to: {self.project.title}")
+        log(f"Adding Cover Art to: {self.project}")
         while self.keep_going:
             try:
                 line = self.process.stdout.readline()
@@ -303,13 +268,19 @@ class ProjectConverterWorker(object):
                 #  just skip a line.
                 continue
             if not line:
-                dbg(f"Finished Adding CoverArt to: {self.project.title}")
+                dbg(f"Finished Adding CoverArt to: {self.project}")
                 break
             dbg(line)
             if "adding" in line:
                 self.parent.update(50)
         self.__check_process(cmd)
         self.parent.update(100)
+
+    def cleanup(self):
+        try:
+            os.remove(self.m4a)
+        except IOError:
+            pass
 
     def subprocess(self, cmd: list):
         """subprocess(command_list) -> perfors a system command.
@@ -320,7 +291,7 @@ class ProjectConverterWorker(object):
         if not self.keep_going:
             self.running = False
             return
-        process = subprocess.Popen(
+        self.process = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -330,7 +301,6 @@ class ProjectConverterWorker(object):
         )
         # Close stdin as it is not used
         self.process.stdin.close()
-        return process
 
     def __check_process(self, cmd):
         if self.process and not self.keep_going:
@@ -342,4 +312,4 @@ class ProjectConverterWorker(object):
             # but we wanted to keep going
             self.keep_going = False
             dbg("Process exitcode: ", self.process.returncode)
-            wx.PostEvent(self.parent, ProcessExceptionEvent(cmd=cmd, project=self.project))
+            wx.PostEvent(self.parent, ProcessExceptionEvent(cmd=cmd, project=self.project, msg="Processing went wrong"))

@@ -36,9 +36,6 @@ class MenuBar(wx.MenuBar):
         file_menu.AppendSeparator()
         file_menu.Append(wx.ID_EXIT, "Quit\tCTRL-Q")
 
-        self.file_history = wx.FileHistory()
-        self.file_history.UseMenu(file_menu)
-
         self.Append(file_menu, "&File")
 
         help_menu = wx.Menu()
@@ -58,4 +55,3 @@ class MenuBar(wx.MenuBar):
         for menu_id, handler in menu_handlers:
             self.parent.Bind(wx.EVT_MENU, handler, id=menu_id)
 
-        self.Bind(wx.EVT_MENU_RANGE, self.parent.on_file_history, id=wx.ID_FILE1, id2=wx.ID_FILE9)

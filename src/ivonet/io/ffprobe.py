@@ -43,7 +43,7 @@ def checksum(filename) -> str:
     process.stdout.close()
     if process.returncode != 0 and keep_going:
         raise IOError("Could not retrieve checksum")
-    return ret
+    return ret.strip()
 
 
 def metadata(filename) -> dict:
