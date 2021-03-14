@@ -8,4 +8,3 @@ __doc__ = """
 
 """
 
-from ivonet.image.defines import *
