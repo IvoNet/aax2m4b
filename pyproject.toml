@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "aax2m4b"
+version = "0.0.1"
+description = "Convert AAX files to M4B"
+authors = ["Ivo Woltring <ivo@ivonet.nl>"]
+license = "DBAD"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+wxPython = "^4.1.1"
+pyobjc = "^7.1"
+
+[tool.poetry.dev-dependencies]
+pyinstaller = "^4.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
