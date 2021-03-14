@@ -16,3 +16,8 @@ generated
 venv
 build
 dist
+__pycache__
+*.m4b
+*.m4a
+*.pyc
+*.pyo
