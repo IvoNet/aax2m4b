@@ -3,7 +3,7 @@ name = "aax2m4b"
 version = "0.0.1"
 description = "Convert AAX files to M4B"
 authors = ["Ivo Woltring <ivo@ivonet.nl>"]
-license = "DBAD"
+license = "Apache 2.0"
 
 [tool.poetry.dependencies]
 python = "^3.9"

@@ -10,7 +10,6 @@ The Main Application Window
 
 import ast
 import os
-import pickle
 from configparser import ConfigParser
 
 import wx
@@ -18,14 +17,13 @@ import wx.adv
 from wx.lib.wordwrap import wordwrap
 
 import ivonet
-from ivonet.events import dbg, log
-from ivonet.events.custom import ProjectHistoryEvent, EVT_PROCESS_CLEAN, ProcessCleanEvent, \
+from ivonet.events import dbg
+from ivonet.events.custom import EVT_PROCESS_CLEAN, ProcessCleanEvent, \
     EVT_PROCESS_CANCELLED, ProcessCancelledEvent
 from ivonet.gui.AudiobookEntryPanel import AudiobookEntry
 from ivonet.gui.MP3DropTarget import MP3DropTarget
 from ivonet.gui.MenuBar import MenuBar, FILE_MENU_QUEUE
 from ivonet.image.IvoNetArtProvider import IvoNetArtProvider
-from ivonet.io.save import save_project
 from ivonet.model.Project import Project
 
 try:
@@ -58,7 +56,6 @@ class MainFrame(wx.Frame):
         self.SetSize((1024, 768))
         self.SetMinSize((1024, 768))
         self.current_size = self.GetSize()
-        self.is_resizing = False
 
         self.__make_toolbar()
         self.SetMenuBar(MenuBar(self))
@@ -159,7 +156,6 @@ class MainFrame(wx.Frame):
         tool_bar.SetToolBitmapSize(tool_bar_size)
 
         tool_buttons = [
-            (ivonet.TOOLBAR_ID_SEPARATOR, None, None, None, False),
             (ivonet.TOOLBAR_ID_QUEUE, "queue", "Queue for processing", self.on_queue, False),
         ]
         for art_id, label, short_help, func, enabled in tool_buttons:
@@ -255,57 +251,10 @@ class MainFrame(wx.Frame):
         except ValueError as e:
             dbg(e)
 
-    def on_select_dir(self, event):
-        """Handles the default dir event
-        Deprecated because I don't think I will really use it.
-        """
-        self.status("Select directory")
-        with wx.DirDialog(self, "Choose a directory:",
-                          style=wx.DD_DEFAULT_STYLE
-                                | wx.DD_DIR_MUST_EXIST
-                                | wx.DD_CHANGE_DIR
-                          ) as dir_dialog:
-            if dir_dialog.ShowModal() == wx.ID_OK:
-                self.default_save_path = dir_dialog.GetPath()
-        event.Skip()
-
-    def on_open_project(self, event):
-        """Handles the open project event."""
-        self.status("Open Project")
-        with wx.FileDialog(self,
-                           message="Choose a file...",
-                           defaultDir=os.getcwd(),
-                           defaultFile="",
-                           wildcard=ivonet.FILE_WILDCARD_PROJECT,
-                           style=wx.FD_OPEN | wx.FD_CHANGE_DIR | wx.FD_FILE_MUST_EXIST | wx.FD_PREVIEW
-                           ) as open_dlg:
-            if open_dlg.ShowModal() == wx.ID_OK:
-                path = open_dlg.GetPath()
-                log(f"Opening file: {path}")
-                self.project_open(path)
-                wx.PostEvent(self, ProjectHistoryEvent(path=path))
-        event.Skip()
-
-    def project_open(self, path):
-        """Open a saved project"""
-        try:
-            with open(path, 'rb') as fi:
-                self.project = pickle.load(fi)
-                self.project.name = path
-                self.reset_metadata(self.project)
-        except FileNotFoundError:
-            log(f"File: {path} could not be opened.")
-
     def reset_metadata(self, project):
         """Resets all the metadata fields to te provided project."""
         self.project = project
         self.lc_audiofiles.SetStrings(project.tracks)
-
-    def on_save_project(self, event):
-        """Handles the save project event."""
-        self.status("Save Project")
-        save_project(self, self.project)
-        event.Skip()
 
     def on_clear(self, event):
         """Handles the new project event."""
@@ -345,7 +294,6 @@ class MainFrame(wx.Frame):
         ini.add_section("Settings")
         ini.set('Settings', 'screen_size', str(self.GetSize()))
         ini.set('Settings', 'screen_pos', str(self.GetPosition()))
-        ini.set('Settings', 'default_save_path', self.default_save_path)
         with open(ivonet.SETTINGS_FILE, "w") as fp:
             ini.write(fp)
 
@@ -367,7 +315,6 @@ class MainFrame(wx.Frame):
                 self.Center()
             else:
                 self.SetPosition(position)
-            self.default_save_path = ini.get('Settings', 'default_save_path', fallback=ivonet.DEFAULT_SAVE_PATH)
         else:
             self.Center()
 

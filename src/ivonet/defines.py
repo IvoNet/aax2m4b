@@ -55,7 +55,6 @@ if not os.path.isdir(DEFAULT_SAVE_PATH):
     DEFAULT_SAVE_PATH = "/"
 
 SETTINGS_FILE = os.path.join(SETTINGS_DIRECTORY, f"{TXT_APP_NAME}.ini")
-HISTORY_FILE = os.path.join(SETTINGS_DIRECTORY, f"{TXT_APP_NAME}.history")
 LOG_FILE = os.path.join(SETTINGS_DIRECTORY, f"{TXT_APP_NAME}.log")
 
 try:

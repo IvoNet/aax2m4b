@@ -13,7 +13,7 @@ echo "Rendering all the images to be python code..."
 rm -f "${target}"
 unset img_opt
 
-for img in ${source}/*.{bmp,png}; do
+for img in ${source}/*.png; do
   filename="$(basename "${img}")"
   base_name="${filename%.*}"
   img2py ${img_opt} -i -c -n "${base_name}" "${source}/${filename}" "${target}"

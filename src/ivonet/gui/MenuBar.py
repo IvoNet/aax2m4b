@@ -27,12 +27,7 @@ class MenuBar(wx.MenuBar):
         file_menu = wx.Menu()
         file_menu.Append(wx.ID_NEW, "New \tCTRL-N")
         file_menu.AppendSeparator()
-        file_menu.Append(wx.ID_OPEN, "Open... \tCTRL-O")
-        file_menu.Append(wx.ID_SAVE, "Save... \tCTRL-S")
-        file_menu.AppendSeparator()
         file_menu.Append(FILE_MENU_QUEUE, "Queue\tCTRL-R")
-        file_menu.AppendSeparator()
-        file_menu.Append(FILE_MENU_TO_DIR, "Select output folder\tCTRL-D")
         file_menu.AppendSeparator()
         file_menu.Append(wx.ID_EXIT, "Quit\tCTRL-Q")
 
@@ -46,9 +41,6 @@ class MenuBar(wx.MenuBar):
         menu_handlers = [
             (FILE_MENU_QUEUE, self.parent.on_queue),
             (wx.ID_NEW, self.parent.on_clear),
-            (FILE_MENU_TO_DIR, self.parent.on_select_dir),
-            (wx.ID_OPEN, self.parent.on_open_project),
-            (wx.ID_SAVE, self.parent.on_save_project),
             (wx.ID_EXIT, self.parent.on_exit),
             (wx.ID_ABOUT, self.parent.on_about),
         ]
