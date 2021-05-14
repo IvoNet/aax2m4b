@@ -31,6 +31,8 @@ if not os.path.isfile(APP_MP3_BINDER):
     raise IOError("mp3binder not found. Are you sure you copied it to the resource folder? See the README.md")
 if not os.path.isfile(APP_FFMPEG):
     raise IOError("ffmpeg not found. Are you sure you copied it to the resource folder? See the README.md")
+if not os.path.isfile(APP_FFPROBE):
+    raise IOError("ffprobe not found. Are you sure you copied it to the resource folder? See the README.md")
 if not os.path.isfile(APP_ATOMIC_PARSLEY):
     raise IOError("AtomicParsley not found. Are you sure you copied it to the resource folder? See the README.md")
 if not os.path.isfile(APP_MP4_CHAPS):

@@ -32,11 +32,13 @@ aax2m4b bakes Audiobooks (m4b) from aax files.
 
 To be placed in src/resources:
 
-- ffmpeg (brew install ffmpeg)
-- ffprobe (brew install ffmpeg)
+- ffmpeg (https://evermeet.cx/ffmpeg/)
+- ffprobe (https://evermeet.cx/ffmpeg/)
 - mp4art (brew install mp4v2)
-- AtomicParsley (brew install AtomicParsley)
-- crack (build from source: https://github.com/inAudible-NG/RainbowCrack-NG)
+- AtomicParsley (brew install AtomicParsley
+  or [binary](https://github.com/wez/atomicparsley/releases/))
+- rcrack (build from source: https://github.com/inAudible-NG/RainbowCrack-NG)
+
 
 how...
 
